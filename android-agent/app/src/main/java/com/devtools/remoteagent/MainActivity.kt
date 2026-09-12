@@ -2,6 +2,7 @@ package com.devtools.remoteagent
 
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import android.widget.Button
@@ -21,6 +22,7 @@ class MainActivity : AppCompatActivity() {
 
         val saveBtn = Button(this).apply { text = "Save & Start Agent" }
         val batteryBtn = Button(this).apply { text = "Exempt from battery optimization" }
+        val overlayBtn = Button(this).apply { text = "Allow display over other apps (for background launch)" }
 
         saveBtn.setOnClickListener {
             Config.save(this, relayInput.text.toString(), tokenInput.text.toString(), deviceInput.text.toString())
@@ -34,6 +36,16 @@ class MainActivity : AppCompatActivity() {
             startActivity(intent)
         }
 
+        overlayBtn.setOnClickListener {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)) {
+                val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION)
+                intent.data = Uri.parse("package:$packageName")
+                startActivity(intent)
+            } else {
+                Toast.makeText(this, "Overlay permission already granted", Toast.LENGTH_SHORT).show()
+            }
+        }
+
         val layout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(40, 100, 40, 40)
@@ -42,6 +54,7 @@ class MainActivity : AppCompatActivity() {
             addView(deviceInput)
             addView(saveBtn)
             addView(batteryBtn)
+            addView(overlayBtn)
         }
         setContentView(layout)
     }
