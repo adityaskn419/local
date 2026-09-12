@@ -1,0 +1,81 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Phone Remote Control</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 640px; margin: 40px auto; padding: 0 16px; }
+  h1 { font-size: 20px; }
+  #status { padding: 8px 12px; border-radius: 6px; margin-bottom: 16px; }
+  .online { background: #d4f7d4; }
+  .offline { background: #f7d4d4; }
+  button { margin: 4px; padding: 8px 14px; cursor: pointer; }
+  #log { background: #111; color: #0f0; font-family: monospace; padding: 10px; height: 200px; overflow-y: auto; font-size: 12px; }
+  input { padding: 6px; width: 200px; }
+</style>
+</head>
+<body>
+<h1>Remote Control Dashboard</h1>
+<div>Relay token: <input id="token" placeholder="paste RELAY_TOKEN"></div>
+<div>Device id: <input id="deviceId" value="default"></div>
+<button onclick="connect()">Connect</button>
+<div id="status" class="offline">disconnected</div>
+
+<h3>Quick actions</h3>
+<button onclick="cmd('volume_down')">Volume Down</button>
+<button onclick="cmd('volume_up')">Volume Up</button>
+<button onclick="cmd('volume_mute')">Mute</button>
+<button onclick="cmd('wifi_toggle')">Toggle Wi-Fi</button>
+<button onclick="cmd('screen_lock')">Lock Screen</button>
+<button onclick="cmd('battery_status')">Battery Status</button>
+<br>
+<input id="pkg" placeholder="com.example.app">
+<button onclick="cmd('kill_app', {package: document.getElementById('pkg').value})">Force-stop app</button>
+<button onclick="cmd('launch_app', {package: document.getElementById('pkg').value})">Launch app</button>
+
+<h3>Log</h3>
+<div id="log"></div>
+
+<script>
+let ws;
+function log(s) {
+  const el = document.getElementById("log");
+  el.innerHTML += s + "<br>";
+  el.scrollTop = el.scrollHeight;
+}
+
+function connect() {
+  const token = document.getElementById("token").value;
+  ws = new WebSocket((location.protocol === "https:" ? "wss://" : "ws://") + location.host);
+  ws.onopen = () => {
+    ws.send(JSON.stringify({ type: "hello", role: "dashboard", token }));
+  };
+  ws.onmessage = (ev) => {
+    const msg = JSON.parse(ev.data);
+    if (msg.type === "agent_list" || msg.type === "agent_status") {
+      const online = msg.type === "agent_list"
+        ? msg.devices.includes(document.getElementById("deviceId").value)
+        : msg.online;
+      const s = document.getElementById("status");
+      s.className = online ? "online" : "offline";
+      s.textContent = online ? "device online" : "device offline";
+    }
+    if (msg.type === "result") {
+      log(`[result] ${JSON.stringify(msg)}`);
+    }
+    if (msg.type === "error") {
+      log(`[error] ${msg.message}`);
+    }
+  };
+  ws.onclose = () => log("[ws closed]");
+}
+
+function cmd(action, args = {}) {
+  const requestId = Math.random().toString(36).slice(2);
+  const deviceId = document.getElementById("deviceId").value;
+  ws.send(JSON.stringify({ type: "command", deviceId, requestId, action, args }));
+  log(`[sent] ${action} ${JSON.stringify(args)}`);
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,8 @@
+node_modules/
+*.log
+android-agent/.gradle/
+android-agent/app/build/
+android-agent/build/
+android-agent/local.properties
+.idea/
+*.iml

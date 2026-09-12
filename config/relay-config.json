@@ -1,0 +1,5 @@
+{
+  "relay_url": "wss://your-current-tunnel-host.example.com",
+  "token": "pick-a-long-random-string",
+  "device_id": "default"
+}
