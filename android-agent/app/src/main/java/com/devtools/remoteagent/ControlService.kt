@@ -5,6 +5,9 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
 import android.content.Intent
+import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkRequest
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import okhttp3.*
@@ -18,6 +21,8 @@ class ControlService : Service() {
     private var retryDelayMs = 2000L
     private val handler = android.os.Handler(android.os.Looper.getMainLooper())
     private lateinit var executor: CommandExecutor
+    private var connectivity: ConnectivityManager? = null
+    private var netCallback: ConnectivityManager.NetworkCallback? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -25,21 +30,58 @@ class ControlService : Service() {
         client = OkHttpClient.Builder()
             .pingInterval(20, TimeUnit.SECONDS)
             .build()
-        startForeground(1, buildNotification("Connecting..."))
+        try { startForeground(1, buildNotification("Connecting...")) } catch (_: Exception) {}
+        ServiceLauncher.scheduleWatchdog(this)
+        registerNetworkCallback()
         connect()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        // Re-assert foreground and connection on every (re)start / watchdog kick.
+        try { startForeground(1, buildNotification("Connecting...")) } catch (_: Exception) {}
+        if (ws == null) connect()
         return START_STICKY
     }
 
+    private fun registerNetworkCallback() {
+        connectivity = getSystemService(ConnectivityManager::class.java)
+        val cb = object : ConnectivityManager.NetworkCallback() {
+            override fun onAvailable(network: Network) {
+                // network came back — reconnect immediately instead of waiting for backoff
+                handler.post { if (ws == null) connect() }
+            }
+        }
+        netCallback = cb
+        try {
+            connectivity?.registerNetworkCallback(
+                NetworkRequest.Builder()
+                    .addCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET).build(),
+                cb
+            )
+        } catch (_: Exception) {}
+    }
+
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        // user swiped the app from recents — many OEMs kill us; schedule a restart
+        ServiceLauncher.scheduleRestart(this, 1500)
+        super.onTaskRemoved(rootIntent)
+    }
+
+    @Volatile private var connecting = false
+
     private fun connect() {
+        if (connecting || ws != null) return
+        connecting = true
         // Refresh from the stable config endpoint first (blocking is fine here —
         // we're already off the main thread inside the service, and this happens
         // at most once per reconnect attempt, not per message).
         Thread {
-            ConfigFetcher.refresh(this)
-            connectWithCurrentConfig()
+            try {
+                ConfigFetcher.refresh(this)
+                connectWithCurrentConfig()
+            } finally {
+                connecting = false
+            }
         }.start()
     }
 
@@ -72,11 +114,13 @@ class ControlService : Service() {
             }
 
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
+                ws = null
                 updateNotification("Disconnected — retrying")
                 scheduleReconnect()
             }
 
             override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
+                ws = null
                 updateNotification("Disconnected — retrying")
                 scheduleReconnect()
             }
@@ -124,7 +168,10 @@ class ControlService : Service() {
     }
 
     override fun onDestroy() {
-        ws?.close(1000, "service destroyed")
+        try { netCallback?.let { connectivity?.unregisterNetworkCallback(it) } } catch (_: Exception) {}
+        ws?.close(1000, "service destroyed"); ws = null
+        // if we're being torn down unexpectedly, come back
+        ServiceLauncher.scheduleRestart(this, 1000)
         super.onDestroy()
     }
 
