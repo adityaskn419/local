@@ -1,6 +1,8 @@
 package com.devtools.remoteagent
 
+import android.content.ComponentName
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -16,6 +18,11 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        if (Build.VERSION.SDK_INT >= 33 &&
+            checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 1)
+        }
+
         val relayInput = EditText(this).apply { hint = "wss://your-relay.example.com"; setText(Config.relayUrl(this@MainActivity)) }
         val tokenInput = EditText(this).apply { hint = "relay token"; setText(Config.token(this@MainActivity)) }
         val deviceInput = EditText(this).apply { hint = "device id"; setText(Config.deviceId(this@MainActivity)) }
@@ -24,6 +31,7 @@ class MainActivity : AppCompatActivity() {
         val batteryBtn = Button(this).apply { text = "Exempt from battery optimization" }
         val overlayBtn = Button(this).apply { text = "Allow display over other apps (for background launch)" }
         val accBtn = Button(this).apply { text = "Enable Accessibility service (input, gestures, screen read)" }
+        val autostartBtn = Button(this).apply { text = "Open Autostart / app-protection settings (OEM)" }
 
         saveBtn.setOnClickListener {
             Config.save(this, relayInput.text.toString(), tokenInput.text.toString(), deviceInput.text.toString())
@@ -52,6 +60,8 @@ class MainActivity : AppCompatActivity() {
             Toast.makeText(this, "Find “Remote Agent” and turn it on", Toast.LENGTH_LONG).show()
         }
 
+        autostartBtn.setOnClickListener { openAutostart() }
+
         val layout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(40, 100, 40, 40)
@@ -62,7 +72,41 @@ class MainActivity : AppCompatActivity() {
             addView(batteryBtn)
             addView(overlayBtn)
             addView(accBtn)
+            addView(autostartBtn)
         }
         setContentView(layout)
+    }
+
+    /** Tries known OEM autostart / background-protection screens; falls back to app details. */
+    private fun openAutostart() {
+        val candidates = listOf(
+            // Vivo
+            ComponentName("com.iqoo.secure", "com.iqoo.secure.ui.phoneoptimize.AddWhiteListActivity"),
+            ComponentName("com.iqoo.secure", "com.iqoo.secure.ui.phoneoptimize.BgStartUpManager"),
+            ComponentName("com.vivo.permissionmanager", "com.vivo.permissionmanager.activity.BgStartUpManagerActivity"),
+            // Xiaomi / MIUI / HyperOS
+            ComponentName("com.miui.securitycenter", "com.miui.permcenter.autostart.AutoStartManagementActivity"),
+            // Oppo / ColorOS
+            ComponentName("com.coloros.safecenter", "com.coloros.safecenter.permission.startup.StartupAppListActivity"),
+            ComponentName("com.oppo.safe", "com.oppo.safe.permission.startup.StartupAppListActivity"),
+            // Realme
+            ComponentName("com.coloros.safecenter", "com.coloros.safecenter.startupapp.StartupAppListActivity"),
+            // Samsung (battery/device care)
+            ComponentName("com.samsung.android.lool", "com.samsung.android.sm.ui.battery.BatteryActivity"),
+            // Huawei
+            ComponentName("com.huawei.systemmanager", "com.huawei.systemmanager.startupmgr.ui.StartupNormalAppListActivity")
+        )
+        for (c in candidates) {
+            try {
+                startActivity(Intent().setComponent(c).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                Toast.makeText(this, "Enable autostart / no-restriction for Remote Agent", Toast.LENGTH_LONG).show()
+                return
+            } catch (_: Exception) { /* try next */ }
+        }
+        // fallback: app details, where "battery unrestricted" also lives
+        try {
+            startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName")))
+            Toast.makeText(this, "Set Battery to Unrestricted and allow background", Toast.LENGTH_LONG).show()
+        } catch (_: Exception) {}
     }
 }

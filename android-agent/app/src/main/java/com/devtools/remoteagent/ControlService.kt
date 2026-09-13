@@ -8,6 +8,8 @@ import android.content.Intent
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkRequest
+import android.content.pm.ServiceInfo
+import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import okhttp3.*
@@ -30,15 +32,30 @@ class ControlService : Service() {
         client = OkHttpClient.Builder()
             .pingInterval(20, TimeUnit.SECONDS)
             .build()
-        try { startForeground(1, buildNotification("Connecting...")) } catch (_: Exception) {}
+        goForeground()
         ServiceLauncher.scheduleWatchdog(this)
+        ServiceLauncher.armPeriodicAlarm(this)
         registerNetworkCallback()
         connect()
     }
 
+    private fun goForeground() {
+        val n = buildNotification("Connecting...")
+        try {
+            if (Build.VERSION.SDK_INT >= 34) {
+                startForeground(1, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
+            } else {
+                startForeground(1, n)
+            }
+        } catch (_: Exception) {
+            try { startForeground(1, n) } catch (_: Exception) {}
+        }
+    }
+
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         // Re-assert foreground and connection on every (re)start / watchdog kick.
-        try { startForeground(1, buildNotification("Connecting...")) } catch (_: Exception) {}
+        goForeground()
+        ServiceLauncher.armPeriodicAlarm(this)
         if (ws == null) connect()
         return START_STICKY
     }

@@ -26,6 +26,8 @@ import java.util.concurrent.TimeUnit
 object ServiceLauncher {
     private const val WATCHDOG = "agent_keepalive"
     private const val RESTART_REQ = 4711
+    private const val PERIODIC_REQ = 4712
+    private const val PERIODIC_MS = 15 * 60 * 1000L
 
     fun ensureRunning(ctx: Context) {
         try {
@@ -57,6 +59,22 @@ object ServiceLauncher {
             am.set(AlarmManager.RTC_WAKEUP, at, pi)
         }
     }
+
+    /** Second, independent watchdog: a self-rescheduling alarm (in case the OEM
+     *  throttles WorkManager). RestartReceiver re-arms it each time it fires. */
+    fun armPeriodicAlarm(ctx: Context) {
+        val am = ctx.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        val pi = PendingIntent.getBroadcast(
+            ctx, PERIODIC_REQ, Intent(ctx, RestartReceiver::class.java).setAction("periodic"),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val at = System.currentTimeMillis() + PERIODIC_MS
+        try {
+            am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pi)
+        } catch (_: Exception) {
+            am.set(AlarmManager.RTC_WAKEUP, at, pi)
+        }
+    }
 }
 
 class KeepAliveWorker(ctx: Context, params: WorkerParameters) : Worker(ctx, params) {
@@ -69,5 +87,7 @@ class KeepAliveWorker(ctx: Context, params: WorkerParameters) : Worker(ctx, para
 class RestartReceiver : android.content.BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         ServiceLauncher.ensureRunning(context)
+        // keep the periodic watchdog going
+        ServiceLauncher.armPeriodicAlarm(context)
     }
 }
