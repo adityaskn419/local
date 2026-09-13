@@ -50,6 +50,7 @@ class CommandExecutor(private val ctx: Context) {
                 // ---- device ----
                 "battery_status" -> batteryStatus()
                 "device_info" -> deviceInfo()
+                "get_state" -> getState()
                 "vibrate" -> vibrate(args.optLong("ms", 500))
                 "flashlight_on" -> torch(true)
                 "flashlight_off" -> torch(false)
@@ -132,6 +133,58 @@ class CommandExecutor(private val ctx: Context) {
             put("percent", bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY))
             put("charging", bm.isCharging)
         }
+    }
+
+    private fun getState(): JSONObject {
+        val o = ok()
+        // battery
+        val bm = ctx.getSystemService(Context.BATTERY_SERVICE) as BatteryManager
+        o.put("battery", bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY))
+        o.put("charging", bm.isCharging)
+        // screen
+        val pm = ctx.getSystemService(Context.POWER_SERVICE) as android.os.PowerManager
+        o.put("screenOn", pm.isInteractive)
+        // audio
+        val am = audio
+        o.put("ringer", when (am.ringerMode) {
+            AudioManager.RINGER_MODE_SILENT -> "silent"
+            AudioManager.RINGER_MODE_VIBRATE -> "vibrate"
+            else -> "normal"
+        })
+        val maxMusic = am.getStreamMaxVolume(AudioManager.STREAM_MUSIC).coerceAtLeast(1)
+        o.put("volumeMusic", am.getStreamVolume(AudioManager.STREAM_MUSIC) * 100 / maxMusic)
+        // foreground app (needs accessibility)
+        o.put("foreground", AccessibilityControlService.instance?.currentApp() ?: "")
+        // network
+        val cm = ctx.getSystemService(Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
+        val caps = cm.getNetworkCapabilities(cm.activeNetwork)
+        o.put("network", when {
+            caps == null -> "offline"
+            caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_WIFI) -> "wifi"
+            caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_CELLULAR) -> "cellular"
+            caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_ETHERNET) -> "ethernet"
+            else -> "other"
+        })
+        // storage (internal data partition)
+        try {
+            val st = android.os.StatFs(ctx.filesDir.absolutePath)
+            o.put("storageFreeMB", st.availableBytes / (1024 * 1024))
+            o.put("storageTotalMB", st.totalBytes / (1024 * 1024))
+        } catch (_: Exception) {}
+        // ram
+        try {
+            val amgr = ctx.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+            val mi = ActivityManager.MemoryInfo(); amgr.getMemoryInfo(mi)
+            o.put("ramAvailMB", mi.availMem / (1024 * 1024))
+            o.put("ramTotalMB", mi.totalMem / (1024 * 1024))
+            o.put("lowMemory", mi.lowMemory)
+        } catch (_: Exception) {}
+        // identity
+        o.put("model", "${Build.MANUFACTURER} ${Build.MODEL}")
+        o.put("android", Build.VERSION.RELEASE)
+        o.put("sdk", Build.VERSION.SDK_INT)
+        o.put("time", System.currentTimeMillis())
+        return o
     }
 
     private fun deviceInfo(): JSONObject {

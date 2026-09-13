@@ -149,18 +149,26 @@ class ControlService : Service() {
         retryDelayMs = (retryDelayMs * 2).coerceAtMost(60_000L)
     }
 
+    // Run commands off the WebSocket thread so a slow command (screenshot,
+    // force-stop waits) never stalls ping/pong or blocks other commands.
+    private val cmdPool = java.util.concurrent.Executors.newFixedThreadPool(3)
+
     private fun handleMessage(text: String) {
-        val msg = JSONObject(text)
-        if (msg.optString("type") != "command") return
-        val action = msg.optString("action")
-        val args = msg.optJSONObject("args") ?: JSONObject()
-        val result = executor.execute(action, args)
-        val response = JSONObject()
-            .put("type", "result")
-            .put("requestId", msg.optString("requestId"))
-            .put("action", action)
-        for (k in result.keys()) response.put(k, result.get(k))
-        ws?.send(response.toString())
+        cmdPool.execute {
+            try {
+                val msg = JSONObject(text)
+                if (msg.optString("type") != "command") return@execute
+                val action = msg.optString("action")
+                val args = msg.optJSONObject("args") ?: JSONObject()
+                val result = executor.execute(action, args)
+                val response = JSONObject()
+                    .put("type", "result")
+                    .put("requestId", msg.optString("requestId"))
+                    .put("action", action)
+                for (k in result.keys()) response.put(k, result.get(k))
+                ws?.send(response.toString())
+            } catch (_: Exception) {}
+        }
     }
 
     private fun buildNotification(text: String): Notification {
