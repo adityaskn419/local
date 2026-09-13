@@ -116,6 +116,22 @@ class AccessibilityControlService : AccessibilityService() {
         return focused.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args)
     }
 
+    fun imeEnter(): Boolean {
+        val f = rootInActiveWindow?.findFocus(AccessibilityNodeInfo.FOCUS_INPUT) ?: return false
+        return if (Build.VERSION.SDK_INT >= 30)
+            f.performAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_IME_ENTER.id)
+        else f.performAction(AccessibilityNodeInfo.ACTION_CLICK)
+    }
+
+    fun focusNext(): Boolean {
+        val cur = rootInActiveWindow?.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
+            ?: rootInActiveWindow?.findFocus(AccessibilityNodeInfo.FOCUS_ACCESSIBILITY)
+            ?: return false
+        val next = cur.focusSearch(android.view.View.FOCUS_FORWARD) ?: return false
+        return next.performAction(AccessibilityNodeInfo.ACTION_FOCUS) ||
+            next.performAction(AccessibilityNodeInfo.ACTION_ACCESSIBILITY_FOCUS)
+    }
+
     fun scroll(forward: Boolean): Boolean {
         val root = rootInActiveWindow ?: return false
         val action = if (forward) AccessibilityNodeInfo.ACTION_SCROLL_FORWARD else AccessibilityNodeInfo.ACTION_SCROLL_BACKWARD

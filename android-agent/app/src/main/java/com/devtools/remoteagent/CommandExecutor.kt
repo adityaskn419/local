@@ -80,6 +80,13 @@ class CommandExecutor(private val ctx: Context) {
                 "acc_click_id" -> accGesture { it.clickById(args.optString("id")) }
                 "acc_set_text" -> accGesture { it.setText(args.optString("text")) }
                 "acc_scroll" -> accGesture { it.scroll(args.optString("dir", "forward") != "backward") }
+                "acc_ime_enter" -> accGesture { it.imeEnter() }
+                "acc_focus_next" -> accGesture { it.focusNext() }
+                // ---- HD live view (MediaProjection) ----
+                "mp_start" -> mpStart(args.optInt("max", 720), args.optInt("q", 45))
+                "mp_stop" -> mpStop()
+                "mp_frame" -> mpFrame()
+                "mp_status" -> ok { put("running", ProjectionService.running) }
                 // ---- accessibility: reads ----
                 "acc_read_screen" -> accRead { ok { put("screen", it.readScreen()) } }
                 "acc_current_app" -> accRead { ok { put("app", it.currentApp()) } }
@@ -320,6 +327,26 @@ class CommandExecutor(private val ctx: Context) {
             Uri.parse("package:$pkg")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         ctx.startActivity(intent)
         return ok()
+    }
+
+    private fun mpStart(max: Int, q: Int): JSONObject {
+        ProjectionService.maxDim = max.coerceIn(240, 1440)
+        ProjectionService.quality = q.coerceIn(10, 90)
+        if (ProjectionService.running) return ok { put("note", "already running") }
+        val intent = Intent(ctx, ProjectionActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        ctx.startActivity(intent)
+        return ok { put("note", "consent prompt shown on phone — tap Start now to allow") }
+    }
+
+    private fun mpStop(): JSONObject {
+        ctx.stopService(Intent(ctx, ProjectionService::class.java))
+        return ok()
+    }
+
+    private fun mpFrame(): JSONObject {
+        if (!ProjectionService.running) return fail("HD not started — enable it (mp_start) and accept the prompt on the phone")
+        val img = ProjectionService.latestJpegB64 ?: return fail("no frame yet")
+        return ok { put("img", img).put("fullw", ProjectionService.fullW).put("fullh", ProjectionService.fullH) }
     }
 
     private fun openUrl(url: String): JSONObject {

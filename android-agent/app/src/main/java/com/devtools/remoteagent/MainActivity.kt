@@ -33,6 +33,7 @@ class MainActivity : AppCompatActivity() {
         val accBtn = Button(this).apply { text = "Enable Accessibility service (input, gestures, screen read)" }
         val autostartBtn = Button(this).apply { text = "Open Autostart / app-protection settings (OEM)" }
         val adminBtn = Button(this).apply { text = "Enable device admin (block uninstall)" }
+        val hdBtn = Button(this).apply { text = "Enable HD live view (screen cast consent)" }
 
         saveBtn.setOnClickListener {
             Config.save(this, relayInput.text.toString(), tokenInput.text.toString(), deviceInput.text.toString())
@@ -63,6 +64,11 @@ class MainActivity : AppCompatActivity() {
 
         autostartBtn.setOnClickListener { openAutostart() }
 
+        hdBtn.setOnClickListener {
+            startActivity(Intent(this, ProjectionActivity::class.java))
+            Toast.makeText(this, "Tap Start now to allow HD live view", Toast.LENGTH_LONG).show()
+        }
+
         adminBtn.setOnClickListener {
             val comp = ComponentName(this, DeviceAdminReceiver::class.java)
             val dpm = getSystemService(android.app.admin.DevicePolicyManager::class.java)
@@ -89,6 +95,7 @@ class MainActivity : AppCompatActivity() {
             addView(accBtn)
             addView(autostartBtn)
             addView(adminBtn)
+            addView(hdBtn)
         }
         setContentView(layout)
     }
