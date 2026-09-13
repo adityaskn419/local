@@ -153,7 +153,57 @@
   .keys span{color:var(--dim)}
   .modal .close{margin-top:16px;width:100%}
 
-  @media(max-width:560px){header{flex-wrap:wrap}.gear input.tok{width:90px}.appgrid{grid-template-columns:1fr 1fr}}
+  /* state panel */
+  .sgrid{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(210px,1fr))}
+  .stat{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:14px 15px;min-width:0}
+  .stat .lbl{font-size:10.5px;text-transform:uppercase;letter-spacing:.09em;color:var(--faint);font-weight:650;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+  .stat .lbl .sub{margin-left:auto;font-family:var(--mono);font-size:10px;color:var(--faint);text-transform:none;letter-spacing:0}
+  .gaugewrap{display:flex;align-items:center;gap:14px}
+  .ring{flex:none}
+  .ring text{font-family:var(--mono);font-weight:600}
+  .gbig{font-size:22px;font-weight:650;font-family:var(--mono);line-height:1.1}
+  .gsub{font-size:11px;color:var(--dim);margin-top:3px}
+  .meter{height:8px;border-radius:5px;background:var(--line2);overflow:hidden;margin-top:4px}
+  .meter>i{display:block;height:100%;background:var(--accent);border-radius:5px;transition:width .4s}
+  .meter>i.warn{background:var(--amber)} .meter>i.bad{background:var(--red)}
+  .metari{display:flex;justify-content:space-between;font-family:var(--mono);font-size:11px;color:var(--dim);margin-top:8px}
+  .metari b{color:var(--txt);font-weight:500}
+  .chip{display:inline-flex;align-items:center;gap:7px;padding:5px 11px;border-radius:20px;border:1px solid var(--line2);background:var(--panel2);font-size:12.5px;font-family:var(--mono)}
+  .chip .cd{width:8px;height:8px;border-radius:50%;background:var(--faint)}
+  .chip.good{color:var(--accent);border-color:color-mix(in srgb,var(--accent) 40%,var(--line2))}.chip.good .cd{background:var(--accent)}
+  .chip.bad{color:var(--red)}.chip.bad .cd{background:var(--red)}
+  .chip.warn{color:var(--amber)}.chip.warn .cd{background:var(--amber)}
+  .idrow{font-family:var(--mono);font-size:12px;color:var(--dim);line-height:1.9}
+  .idrow b{color:var(--txt);font-weight:500}
+  .fgpill{display:inline-block;max-width:100%;font-family:var(--mono);font-size:12.5px;color:var(--txt);background:var(--panel2);border:1px solid var(--line2);border-radius:7px;padding:6px 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+  /* automation */
+  .note{font-size:11.5px;color:var(--dim);background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:9px 11px;margin-bottom:14px;line-height:1.5}
+  .note b{color:var(--txt)}
+  .rule{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;margin-bottom:8px}
+  .rule .rh{display:flex;align-items:center;gap:10px}
+  .rule .rn{font-weight:600;font-size:13px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .rule .rc{font-family:var(--mono);font-size:11px;color:var(--dim);margin-top:6px;line-height:1.5}
+  .rule .rc .arr{color:var(--accent)}
+  .rule.off{opacity:.55}
+  .rowbtns{display:flex;gap:6px;margin-left:auto;flex:none}
+  .xbtn{width:28px;height:28px;padding:0;display:grid;place-items:center}
+  .sw{position:relative;width:38px;height:22px;flex:none;border:1px solid var(--line2);background:var(--panel2);border-radius:20px;padding:0;cursor:pointer}
+  .sw::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:var(--faint);transition:.15s}
+  .sw[aria-checked="true"]{background:color-mix(in srgb,var(--accent) 30%,var(--panel2));border-color:var(--accent)}
+  .sw[aria-checked="true"]::after{left:18px;background:var(--accent)}
+  .builder{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:14px 15px}
+  .builder .grid3{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:center}
+  .builder select,.builder input{width:100%}
+  .actlist{margin-top:10px;display:flex;flex-direction:column;gap:6px}
+  .actrow{display:flex;gap:6px;align-items:center;flex-wrap:wrap;background:var(--panel2);border:1px solid var(--line2);border-radius:7px;padding:7px 8px}
+  .actrow select{flex:0 0 auto;width:auto;min-width:130px}
+  .actrow input{flex:1;min-width:90px}
+  .fire{font-family:var(--mono);font-size:11px;color:var(--dim);padding:2px 0}
+  .fire .ft{color:var(--faint)} .fire .fn{color:var(--accent)}
+  .subhead{font-size:11px;text-transform:uppercase;letter-spacing:.09em;color:var(--faint);font-weight:650;margin:0 0 10px}
+
+  @media(max-width:560px){header{flex-wrap:wrap}.gear input.tok{width:90px}.appgrid{grid-template-columns:1fr 1fr}.builder .grid3{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -175,6 +225,8 @@
   <button class="tab" role="tab" id="tab-controls" aria-selected="true" aria-controls="v-controls" data-v="controls" onclick="tab('controls')">Controls</button>
   <button class="tab" role="tab" id="tab-apps" aria-selected="false" aria-controls="v-apps" data-v="apps" onclick="tab('apps')">Apps</button>
   <button class="tab" role="tab" id="tab-system" aria-selected="false" aria-controls="v-system" data-v="system" onclick="tab('system')">System</button>
+  <button class="tab" role="tab" id="tab-state" aria-selected="false" aria-controls="v-state" data-v="state" onclick="tab('state')">State</button>
+  <button class="tab" role="tab" id="tab-automation" aria-selected="false" aria-controls="v-automation" data-v="automation" onclick="tab('automation')">Automation</button>
 </nav>
 
 <main id="main">
@@ -337,6 +389,48 @@
       </div>
     </div>
   </section>
+
+  <section class="view" id="v-state" role="tabpanel" aria-labelledby="tab-state" hidden>
+    <div class="apptools">
+      <div style="flex:1;font-family:var(--mono);font-size:11px;color:var(--faint)" id="stateStatus" aria-live="polite">idle</div>
+      <button class="btn" style="flex:none" onclick="stateTick()">Refresh</button>
+    </div>
+    <div class="sgrid" id="stategrid">
+      <div class="placeholder" style="grid-column:1/-1">Connect and this panel streams live device state every ~2.5s.</div>
+    </div>
+  </section>
+
+  <section class="view" id="v-automation" role="tabpanel" aria-labelledby="tab-automation" hidden>
+    <div class="note">Rules run <b>while this dashboard is open</b> — the browser evaluates device state and fires actions. On-device rules (running even when the dashboard is closed) are a planned agent feature. State is polled ~2.5s while any rule is enabled.</div>
+
+    <div class="builder" style="margin-bottom:16px">
+      <div class="subhead">New rule</div>
+      <div class="row miniform" style="margin-bottom:8px"><input id="rlName" placeholder="rule name (e.g. Low battery alert)" aria-label="rule name"></div>
+      <div class="grid3">
+        <select id="rlField" aria-label="state field"></select>
+        <select id="rlOp" aria-label="operator" style="min-width:96px">
+          <option value="<">&lt;</option><option value="<=">&le;</option>
+          <option value=">">&gt;</option><option value=">=">&ge;</option>
+          <option value="==">=</option><option value="!=">&ne;</option>
+          <option value="changed">changed</option>
+        </select>
+        <input id="rlVal" placeholder="value" aria-label="value">
+      </div>
+      <div style="margin-top:12px" class="subhead">Then do</div>
+      <div class="actlist" id="rlActions"></div>
+      <div class="row" style="margin-top:8px">
+        <button class="btn" style="flex:none" onclick="addActionRow()">+ Add action</button>
+        <button class="primary" style="flex:none;margin-left:auto" onclick="saveRule()">Save rule</button>
+        <button class="btn" style="flex:none" id="rlCancel" onclick="cancelEdit()" hidden>Cancel</button>
+      </div>
+    </div>
+
+    <div class="subhead">Rules</div>
+    <div id="rulelist"></div>
+
+    <div class="subhead" style="margin-top:18px">Fired events</div>
+    <div id="firelog" style="background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:10px 14px;max-height:180px;overflow:auto"><span class="fire"><span class="ft">nothing fired yet</span></span></div>
+  </section>
 </main>
 
 <div class="logbar">
@@ -356,6 +450,8 @@
       <kbd>1</kbd><span>Controls tab</span>
       <kbd>2</kbd><span>Apps tab</span>
       <kbd>3</kbd><span>System tab</span>
+      <kbd>4</kbd><span>State tab</span>
+      <kbd>5</kbd><span>Automation tab</span>
       <kbd>p</kbd><span>Play / pause</span>
       <kbd>[ &nbsp; ]</kbd><span>Previous / next track</span>
       <kbd>↑ &nbsp; ↓</kbd><span>Volume up / down</span>
@@ -400,7 +496,7 @@ function connect(){
   saveCfg(); if(ws){try{ws.close()}catch{}}
   ws=new WebSocket((location.protocol==="https:"?"wss://":"ws://")+location.host);
   setStatus("connecting");
-  ws.onopen=()=>{connected=true;ws.send(JSON.stringify({type:"hello",role:"dashboard",token:$("token").value}));$("cbtn").textContent="Reconnect";log("connected to relay","t");};
+  ws.onopen=()=>{connected=true;ws.send(JSON.stringify({type:"hello",role:"dashboard",token:$("token").value}));$("cbtn").textContent="Reconnect";log("connected to relay","t");updateStatePolling();};
   ws.onmessage=ev=>{
     const m=JSON.parse(ev.data);
     if(m.type==="agent_list")setStatus(m.devices.includes($("deviceId").value)?"online":"offline");
@@ -408,7 +504,7 @@ function connect(){
     if(m.type==="result"){ if(pending[m.requestId]){pending[m.requestId](m);delete pending[m.requestId];} else logResult(m); }
     if(m.type==="error")log("error: "+m.message,"bad");
   };
-  ws.onclose=()=>{connected=false;setStatus("disconnected");};
+  ws.onclose=()=>{connected=false;setStatus("disconnected");updateStatePolling();};
   ws.onerror=()=>log("ws error","bad");
 }
 function cmd(action,args={},cb,quiet){
@@ -501,12 +597,17 @@ function appEl(a,custom){
 }
 try{const c=localStorage.getItem("rc_apps");if(c)apps=JSON.parse(c);}catch{}
 
+let activeTab="controls";
 function tab(v){
+  activeTab=v;
   document.querySelectorAll(".tab").forEach(t=>t.setAttribute("aria-selected",t.dataset.v===v?"true":"false"));
   document.querySelectorAll(".view").forEach(s=>{const on=s.id==="v-"+v;s.classList.toggle("active",on);s.hidden=!on;});
   if(v==="apps")renderApps();
   if(v==="system"){buildNav();wireLiveClick();}
   else if(liveTimer)stopLive();
+  if(v==="state"&&lastState)renderState(lastState);
+  if(v==="automation")renderRules();
+  updateStatePolling();
 }
 let liveWired=false;
 function wireLiveClick(){
@@ -550,6 +651,8 @@ document.addEventListener("keydown",e=>{
     case"1":tab("controls");break;
     case"2":tab("apps");break;
     case"3":tab("system");break;
+    case"4":tab("state");break;
+    case"5":tab("automation");break;
     case"?":e.preventDefault();openHelp();break;
     case"t":toggleTheme();break;
     case"l":toggleLog();break;
@@ -562,6 +665,205 @@ document.addEventListener("keydown",e=>{
     case"ArrowDown":e.preventDefault();cmd("volume_down");break;
   }
 });
+
+/* ===== device state ===== */
+let stateTimer=null,stateBusy=false,lastState=null;
+function hasEnabledRules(){return loadRules().some(r=>r.enabled);}
+function wantState(){return connected&&(activeTab==="state"||activeTab==="automation"||hasEnabledRules());}
+function updateStatePolling(){
+  if(wantState()&&!stateTimer){ stateTick(); stateTimer=setInterval(stateTick,2500); }
+  else if(!wantState()&&stateTimer){ clearInterval(stateTimer); stateTimer=null; if(activeTab==="state")$("stateStatus").textContent="idle"; }
+}
+function stateTick(){
+  if(!connected||stateBusy)return; stateBusy=true;
+  if(activeTab==="state")$("stateStatus").textContent="updating…";
+  cmd("get_state",{},m=>{
+    stateBusy=false;
+    if(m&&m.ok){ lastState=m; if(activeTab==="state"){renderState(m);$("stateStatus").textContent="live · updated "+new Date().toLocaleTimeString([],{hour12:false});} evalRules(m); }
+    else if(m&&activeTab==="state"){ $("stateStatus").textContent="error: "+(m.error||"failed"); }
+  },true);
+}
+
+function ring(pct,color){
+  const r=26,c=2*Math.PI*r,off=c*(1-pct/100);
+  return '<svg class="ring" width="66" height="66" viewBox="0 0 66 66" aria-hidden="true">'+
+    '<circle cx="33" cy="33" r="'+r+'" fill="none" stroke="var(--line2)" stroke-width="6"/>'+
+    '<circle cx="33" cy="33" r="'+r+'" fill="none" stroke="'+color+'" stroke-width="6" stroke-linecap="round" stroke-dasharray="'+c.toFixed(1)+'" stroke-dashoffset="'+off.toFixed(1)+'" transform="rotate(-90 33 33)"/>'+
+    '<text x="33" y="37" text-anchor="middle" font-size="15" fill="var(--txt)">'+Math.round(pct)+'</text></svg>';
+}
+function meter(pct,cls){pct=Math.max(0,Math.min(100,pct));return '<div class="meter"><i class="'+(cls||"")+'" style="width:'+pct+'%"></i></div>';}
+function gb(mb){return (mb/1024).toFixed(mb>=10240?0:1)+" GB";}
+
+function renderState(m){
+  const g=$("stategrid");
+  const batColor=m.charging?"var(--blue)":m.battery<15?"var(--red)":m.battery<30?"var(--amber)":"var(--accent)";
+  const netGood=m.network!=="offline";
+  const stoUsed=(m.storageTotalMB&&m.storageFreeMB!=null)?(m.storageTotalMB-m.storageFreeMB):0;
+  const stoPct=m.storageTotalMB?stoUsed/m.storageTotalMB*100:0;
+  const ramUsed=(m.ramTotalMB&&m.ramAvailMB!=null)?(m.ramTotalMB-m.ramAvailMB):0;
+  const ramPct=m.ramTotalMB?ramUsed/m.ramTotalMB*100:0;
+  g.innerHTML=
+    '<div class="stat"><div class="lbl">Battery<span class="sub">'+(m.charging?"charging":"discharging")+'</span></div>'+
+      '<div class="gaugewrap">'+ring(m.battery||0,batColor)+
+      '<div><div class="gbig">'+(m.battery!=null?m.battery+"%":"?")+'</div><div class="gsub">'+(m.charging?"⚡ plugged in":"on battery")+'</div></div></div></div>'+
+
+    '<div class="stat"><div class="lbl">Connectivity</div>'+
+      '<div class="gaugewrap"><span class="chip '+(netGood?"good":"bad")+'"><span class="cd"></span>'+esc(m.network||"?")+'</span></div>'+
+      '<div class="metari" style="margin-top:14px"><span>screen</span><b>'+(m.screenOn?"on":"off")+'</b></div>'+
+      '<div class="metari"><span>ringer</span><b>'+esc(m.ringer||"?")+'</b></div></div>'+
+
+    '<div class="stat"><div class="lbl">Media volume</div>'+
+      '<div class="gbig">'+(m.volumeMusic!=null?m.volumeMusic+"%":"?")+'</div>'+meter(m.volumeMusic||0)+'</div>'+
+
+    '<div class="stat"><div class="lbl">Foreground app</div>'+
+      '<div class="fgpill" title="'+esc(m.foreground||"")+'">'+esc(m.foreground||"—")+'</div></div>'+
+
+    '<div class="stat"><div class="lbl">Storage</div>'+
+      meter(stoPct,stoPct>90?"bad":stoPct>75?"warn":"")+
+      '<div class="metari"><span>free <b>'+gb(m.storageFreeMB||0)+'</b></span><span>of '+gb(m.storageTotalMB||0)+'</span></div></div>'+
+
+    '<div class="stat"><div class="lbl">Memory<span class="sub">'+(m.lowMemory?"low!":"ok")+'</span></div>'+
+      meter(ramPct,m.lowMemory?"bad":ramPct>85?"warn":"")+
+      '<div class="metari"><span>avail <b>'+gb(m.ramAvailMB||0)+'</b></span><span>of '+gb(m.ramTotalMB||0)+'</span></div></div>'+
+
+    '<div class="stat" style="grid-column:1/-1"><div class="lbl">Device</div>'+
+      '<div class="idrow"><span class="k">model </span><b>'+esc(m.model||"?")+'</b> &nbsp; '+
+      '<span class="k">android </span><b>'+esc(m.android||"?")+'</b> <span class="k">(sdk '+esc(String(m.sdk))+')</span></div></div>';
+}
+
+/* ===== automation (client-side rules) ===== */
+const STATE_FIELDS=[
+  ["battery","number"],["charging","bool"],["screenOn","bool"],["ringer","string"],
+  ["volumeMusic","number"],["foreground","string"],["network","string"],
+  ["storageFreeMB","number"],["ramAvailMB","number"],["lowMemory","bool"],["sdk","number"]
+];
+const ACTIONS=[
+  ["notify","Notify",[["title","title"],["text","message"]]],
+  ["set_volume","Set volume",[["level","0-100"]]],
+  ["volume_mute","Mute",[]],["volume_up","Volume up",[]],["volume_down","Volume down",[]],
+  ["ringer_silent","Ringer silent",[]],["ringer_normal","Ringer normal",[]],["ringer_vibrate","Ringer vibrate",[]],
+  ["launch_app","Launch app",[["package","com.example.app"]]],
+  ["kill_app","Kill app (bg)",[["package","com.example.app"]]],
+  ["acc_force_stop","Force stop",[["package","com.example.app"]]],
+  ["flashlight_on","Flashlight on",[]],["flashlight_off","Flashlight off",[]],
+  ["ring_device","Ring device",[]],["ring_stop","Stop ringing",[]],
+  ["acc_lock","Lock screen",[]],["acc_home","Home",[]],
+  ["open_url","Open URL",[["url","example.com"]]],
+];
+function loadRules(){try{return JSON.parse(localStorage.getItem("rc_rules")||"[]");}catch{return[];}}
+function saveRules(r){try{localStorage.setItem("rc_rules",JSON.stringify(r));}catch{}}
+const ruleState={};
+let editingId=null;
+
+function fieldOpts(){return STATE_FIELDS.map(([f])=>'<option value="'+f+'">'+f+'</option>').join("");}
+function actOpts(){return ACTIONS.map(a=>'<option value="'+a[0]+'">'+a[1]+'</option>').join("");}
+
+function addActionRow(action,args){
+  const wrap=document.createElement("div"); wrap.className="actrow";
+  wrap.innerHTML='<select aria-label="action" onchange="actArgs(this)">'+actOpts()+'</select><span class="args" style="display:flex;gap:6px;flex:1;flex-wrap:wrap"></span>'+
+    '<button class="btn xbtn" aria-label="remove action" onclick="this.parentElement.remove()">×</button>';
+  $("rlActions").appendChild(wrap);
+  const sel=wrap.querySelector("select"); if(action)sel.value=action;
+  actArgs(sel,args);
+}
+function actArgs(sel,preset){
+  const spec=ACTIONS.find(a=>a[0]===sel.value); const box=sel.parentElement.querySelector(".args"); box.innerHTML="";
+  (spec?spec[2]:[]).forEach(([key,ph])=>{
+    const i=document.createElement("input"); i.placeholder=ph; i.dataset.key=key; i.setAttribute("aria-label",key);
+    if(preset&&preset[key]!=null)i.value=preset[key];
+    box.appendChild(i);
+  });
+}
+function readActions(){
+  return [...$("rlActions").children].map(row=>{
+    const action=row.querySelector("select").value; const args={};
+    row.querySelectorAll(".args input").forEach(i=>{ if(i.value!=="")args[i.dataset.key]=(i.dataset.key==="level"?+i.value:i.value); });
+    return {action,args};
+  }).filter(a=>a.action);
+}
+function saveRule(){
+  const name=$("rlName").value.trim()||($("rlField").value+" "+$("rlOp").value+" "+$("rlVal").value);
+  const actions=readActions();
+  if(!actions.length){alert("Add at least one action");return;}
+  const rule={id:editingId||("r"+Date.now()),name,enabled:true,
+    field:$("rlField").value,op:$("rlOp").value,value:$("rlVal").value,actions};
+  const rules=loadRules(); const idx=rules.findIndex(r=>r.id===rule.id);
+  if(idx>=0){rule.enabled=rules[idx].enabled;rules[idx]=rule;} else rules.push(rule);
+  saveRules(rules); delete ruleState[rule.id]; cancelEdit(); renderRules(); updateStatePolling();
+}
+function cancelEdit(){
+  editingId=null; $("rlName").value=""; $("rlVal").value=""; $("rlActions").innerHTML=""; addActionRow();
+  $("rlCancel").hidden=true;
+}
+function editRule(id){
+  const r=loadRules().find(x=>x.id===id); if(!r)return;
+  editingId=id; $("rlName").value=r.name; $("rlField").value=r.field; $("rlOp").value=r.op; $("rlVal").value=r.value;
+  $("rlActions").innerHTML=""; (r.actions.length?r.actions:[{action:"notify",args:{}}]).forEach(a=>addActionRow(a.action,a.args));
+  $("rlCancel").hidden=false; window.scrollTo(0,0);
+}
+function delRule(id){ saveRules(loadRules().filter(r=>r.id!==id)); delete ruleState[id]; renderRules(); updateStatePolling(); }
+function toggleRule(id){ const rules=loadRules(); const r=rules.find(x=>x.id===id); if(!r)return; r.enabled=!r.enabled; saveRules(rules); delete ruleState[id]; renderRules(); updateStatePolling(); }
+
+function renderRules(){
+  const box=$("rulelist"); const rules=loadRules();
+  if(!rules.length){box.innerHTML='<div class="placeholder" style="padding:24px 0">No rules yet. Build one above.</div>';return;}
+  box.innerHTML="";
+  rules.forEach(r=>{
+    const el=document.createElement("div"); el.className="rule"+(r.enabled?"":" off");
+    const acts=r.actions.map(a=>a.action+(a.args&&Object.keys(a.args).length?"("+Object.values(a.args).join(",")+")":"")).join(", ");
+    el.innerHTML='<div class="rh">'+
+      '<div class="rn">'+esc(r.name)+'</div>'+
+      '<div class="rowbtns">'+
+        '<button class="sw" role="switch" aria-checked="'+r.enabled+'" aria-label="enable rule" onclick="toggleRule(\''+r.id+'\')"></button>'+
+        '<button class="btn xbtn" aria-label="edit rule" title="edit" onclick="editRule(\''+r.id+'\')">✎</button>'+
+        '<button class="btn xbtn" aria-label="delete rule" title="delete" onclick="delRule(\''+r.id+'\')">×</button>'+
+      '</div></div>'+
+      '<div class="rc">when <b>'+esc(r.field)+' '+esc(r.op==="changed"?"changed":r.op+" "+r.value)+'</b> <span class="arr">→</span> '+esc(acts)+'</div>';
+    box.appendChild(el);
+  });
+}
+
+function evalCond(op,a,b){
+  if(typeof a==="boolean"){b=(String(b).toLowerCase()==="true");}
+  const na=parseFloat(a),nb=parseFloat(b);
+  if(!isNaN(na)&&!isNaN(nb)&&typeof a!=="boolean"&&typeof a!=="string"){a=na;b=nb;}
+  else if(!isNaN(na)&&!isNaN(nb)&&typeof a==="string"&&a.trim()!==""){a=na;b=nb;}
+  switch(op){case"<":return a<b;case"<=":return a<=b;case">":return a>b;case">=":return a>=b;case"==":return a==b;case"!=":return a!=b;}
+  return false;
+}
+function evalRules(state){
+  loadRules().forEach(r=>{
+    if(!r.enabled)return;
+    const rs=ruleState[r.id]||(ruleState[r.id]={});
+    const cur=state[r.field];
+    if(r.op==="changed"){
+      if(rs.last!==undefined&&rs.last!==cur)fireRule(r,r.field+" changed "+rs.last+"→"+cur);
+      rs.last=cur;
+    }else{
+      const cond=(cur!==undefined)&&evalCond(r.op,cur,r.value);
+      if(cond&&!rs.prev)fireRule(r,r.field+" "+r.op+" "+r.value);
+      rs.prev=cond;
+    }
+  });
+}
+let firedCount=0;
+function fireRule(r,why){
+  r.actions.forEach(a=>cmd(a.action,a.args||{}));
+  addFired(r.name,why);
+}
+function addFired(name,why){
+  const box=$("firelog");
+  if(firedCount===0)box.innerHTML="";
+  firedCount++;
+  const d=document.createElement("div"); d.className="fire";
+  d.innerHTML='<span class="ft">'+new Date().toLocaleTimeString([],{hour12:false})+'</span> <span class="fn">'+esc(name)+'</span> <span class="ft">— '+esc(why)+'</span>';
+  box.insertBefore(d,box.firstChild);
+  while(box.childElementCount>60)box.removeChild(box.lastChild);
+}
+
+/* init automation UI */
+$("rlField").innerHTML=fieldOpts();
+addActionRow();
 
 setStatus("disconnected");renderApps();
 if($("token").value)connect();
