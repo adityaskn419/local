@@ -11,11 +11,25 @@ android {
         applicationId = "com.devtools.remoteagent"
         minSdk = 26
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = (System.getenv("GITHUB_RUN_NUMBER") ?: "1").toInt()
+        versionName = "1.0." + (System.getenv("GITHUB_RUN_NUMBER") ?: "0")
+    }
+
+    signingConfigs {
+        // Fixed key so every CI build shares one signature — updates install
+        // over the top without uninstall, preserving all granted permissions.
+        getByName("debug") {
+            storeFile = file("debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
     }
 
     buildTypes {
+        debug {
+            signingConfig = signingConfigs.getByName("debug")
+        }
         release {
             isMinifyEnabled = false
         }
