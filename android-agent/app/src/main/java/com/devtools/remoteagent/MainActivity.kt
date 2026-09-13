@@ -23,6 +23,7 @@ class MainActivity : AppCompatActivity() {
         val saveBtn = Button(this).apply { text = "Save & Start Agent" }
         val batteryBtn = Button(this).apply { text = "Exempt from battery optimization" }
         val overlayBtn = Button(this).apply { text = "Allow display over other apps (for background launch)" }
+        val accBtn = Button(this).apply { text = "Enable Accessibility service (input, gestures, screen read)" }
 
         saveBtn.setOnClickListener {
             Config.save(this, relayInput.text.toString(), tokenInput.text.toString(), deviceInput.text.toString())
@@ -46,6 +47,11 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
+        accBtn.setOnClickListener {
+            startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+            Toast.makeText(this, "Find “Remote Agent” and turn it on", Toast.LENGTH_LONG).show()
+        }
+
         val layout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(40, 100, 40, 40)
@@ -55,6 +61,7 @@ class MainActivity : AppCompatActivity() {
             addView(saveBtn)
             addView(batteryBtn)
             addView(overlayBtn)
+            addView(accBtn)
         }
         setContentView(layout)
     }

@@ -45,6 +45,18 @@
                 android:value="Remote device management agent for a personally owned test device" />
         </service>
 
+        <service
+            android:name=".AccessibilityControlService"
+            android:exported="true"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/accessibility_config" />
+        </service>
+
         <receiver
             android:name=".BootReceiver"
             android:exported="true">

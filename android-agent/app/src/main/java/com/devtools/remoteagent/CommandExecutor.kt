@@ -61,9 +61,34 @@ class CommandExecutor(private val ctx: Context) {
                 "launch_app" -> launchApp(args.optString("package"))
                 "kill_app" -> killApp(args.optString("package"))
                 "open_url" -> openUrl(args.optString("url"))
+                // ---- accessibility: navigation ----
+                "acc_back","acc_home","acc_recents","acc_notifications","acc_quick_settings",
+                "acc_power_dialog","acc_split_screen","acc_lock","acc_screenshot","acc_headset_hook",
+                "acc_a11y_button","acc_all_apps","acc_dismiss_shade","acc_menu","acc_media_play_pause",
+                "acc_dpad_up","acc_dpad_down","acc_dpad_left","acc_dpad_right","acc_dpad_center" ->
+                    accGlobal(action.removePrefix("acc_"))
+                "acc_global" -> accGlobal(args.optString("name"))
+                // ---- accessibility: gestures ----
+                "acc_tap" -> accGesture { it.tap(args.optInt("x"), args.optInt("y")) }
+                "acc_double_tap" -> accGesture { it.doubleTap(args.optInt("x"), args.optInt("y")) }
+                "acc_long_press" -> accGesture { it.longPress(args.optInt("x"), args.optInt("y"), args.optLong("ms", 600)) }
+                "acc_swipe" -> accGesture { it.swipe(args.optInt("x1"), args.optInt("y1"), args.optInt("x2"), args.optInt("y2"), args.optLong("ms", 300)) }
+                // ---- accessibility: UI automation ----
+                "acc_click_text" -> accGesture { it.clickByText(args.optString("text")) }
+                "acc_click_desc" -> accGesture { it.clickByDesc(args.optString("desc")) }
+                "acc_click_id" -> accGesture { it.clickById(args.optString("id")) }
+                "acc_set_text" -> accGesture { it.setText(args.optString("text")) }
+                "acc_scroll" -> accGesture { it.scroll(args.optString("dir", "forward") != "backward") }
+                // ---- accessibility: reads ----
+                "acc_read_screen" -> accRead { ok { put("screen", it.readScreen()) } }
+                "acc_current_app" -> accRead { ok { put("app", it.currentApp()) } }
+                "acc_notifications" -> accRead { ok { put("notifications", it.notifications()) } }
+                // ---- accessibility: combos ----
+                "acc_force_stop" -> forceStopViaUi(args.optString("package"))
+                "acc_open_app_settings" -> openAppSettings(args.optString("package"))
                 // ---- restricted (documented) ----
-                "wifi_toggle" -> fail("Wi-Fi toggle is blocked for normal apps on Android 10+. Needs the ADB path.")
-                "screen_lock" -> fail("Locking the screen needs Device Admin. Not enabled in this build.")
+                "wifi_toggle" -> fail("Wi-Fi toggle needs Shizuku (svc wifi) or use acc_quick_settings + tap the tile.")
+                "screen_lock" -> accGlobal("lock")
                 else -> fail("unknown action: $action")
             }
         } catch (e: Exception) {
@@ -203,6 +228,44 @@ class CommandExecutor(private val ctx: Context) {
         val am = ctx.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
         am.killBackgroundProcesses(pkg)
         return ok { put("note", "stops background processes only; a foreground app can't be force-stopped without ADB") }
+    }
+
+    // ---- accessibility helpers ----
+    private val a11yHint = "Enable the Accessibility service for Remote Agent (Settings ▸ Accessibility ▸ Remote Agent)."
+
+    private fun accGlobal(name: String): JSONObject {
+        val svc = AccessibilityControlService.instance ?: return fail(a11yHint)
+        return if (svc.global(name)) ok() else fail("global action failed or unsupported: $name")
+    }
+
+    private fun accGesture(block: (AccessibilityControlService) -> Boolean): JSONObject {
+        val svc = AccessibilityControlService.instance ?: return fail(a11yHint)
+        return if (block(svc)) ok() else fail("gesture/action failed (target not found or dispatch rejected)")
+    }
+
+    private fun accRead(block: (AccessibilityControlService) -> JSONObject): JSONObject {
+        val svc = AccessibilityControlService.instance ?: return fail(a11yHint)
+        return block(svc)
+    }
+
+    private fun forceStopViaUi(pkg: String): JSONObject {
+        if (pkg.isBlank()) return fail("missing package")
+        openAppSettings(pkg)
+        val svc = AccessibilityControlService.instance ?: return fail(a11yHint + " (opened App Info; enable service to auto-tap)")
+        Thread.sleep(1200)
+        val stopped = svc.clickByText("Force stop") || svc.clickByText("Force Stop")
+        if (!stopped) return fail("opened App Info but couldn't find the Force stop button (label varies by OEM)")
+        Thread.sleep(700)
+        svc.clickByText("OK"); svc.clickByText("Force stop")
+        return ok { put("note", "attempted force-stop via App Info UI") }
+    }
+
+    private fun openAppSettings(pkg: String): JSONObject {
+        if (pkg.isBlank()) return fail("missing package")
+        val intent = Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+            Uri.parse("package:$pkg")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        ctx.startActivity(intent)
+        return ok()
     }
 
     private fun openUrl(url: String): JSONObject {

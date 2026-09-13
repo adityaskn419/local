@@ -174,6 +174,7 @@
 <nav role="tablist" aria-label="Sections">
   <button class="tab" role="tab" id="tab-controls" aria-selected="true" aria-controls="v-controls" data-v="controls" onclick="tab('controls')">Controls</button>
   <button class="tab" role="tab" id="tab-apps" aria-selected="false" aria-controls="v-apps" data-v="apps" onclick="tab('apps')">Apps</button>
+  <button class="tab" role="tab" id="tab-system" aria-selected="false" aria-controls="v-system" data-v="system" onclick="tab('system')">System</button>
 </nav>
 
 <main id="main">
@@ -258,6 +259,72 @@
     </div>
     <div class="appgrid" id="appgrid"></div>
   </section>
+
+  <section class="view" id="v-system" role="tabpanel" aria-labelledby="tab-system" hidden>
+    <div class="panels">
+      <div class="card" style="grid-column:1/-1">
+        <h3>Navigation <span class="hint">accessibility · persists reboot</span></h3>
+        <div class="row" id="navgrid"></div>
+      </div>
+
+      <div class="card">
+        <h3>Tap / Long-press</h3>
+        <div class="row miniform">
+          <input id="tx" type="number" placeholder="x" aria-label="tap x" style="flex:1">
+          <input id="ty" type="number" placeholder="y" aria-label="tap y" style="flex:1">
+        </div>
+        <div class="row">
+          <button class="btn" onclick="cmd('acc_tap',{x:num('tx'),y:num('ty')})">Tap</button>
+          <button class="btn" onclick="cmd('acc_double_tap',{x:num('tx'),y:num('ty')})">Double</button>
+          <button class="btn" onclick="cmd('acc_long_press',{x:num('tx'),y:num('ty'),ms:600})">Long</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Swipe</h3>
+        <div class="row miniform">
+          <input id="sx1" type="number" placeholder="x1" aria-label="swipe x1" style="flex:1">
+          <input id="sy1" type="number" placeholder="y1" aria-label="swipe y1" style="flex:1">
+          <input id="sx2" type="number" placeholder="x2" aria-label="swipe x2" style="flex:1">
+          <input id="sy2" type="number" placeholder="y2" aria-label="swipe y2" style="flex:1">
+        </div>
+        <div class="row">
+          <button class="btn" onclick="cmd('acc_swipe',{x1:num('sx1'),y1:num('sy1'),x2:num('sx2'),y2:num('sy2'),ms:300})">Swipe</button>
+          <button class="btn" onclick="cmd('acc_scroll',{dir:'forward'})">Scroll ↓</button>
+          <button class="btn" onclick="cmd('acc_scroll',{dir:'backward'})">Scroll ↑</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>UI automation</h3>
+        <div class="row miniform"><input id="ctext" placeholder="text on screen" aria-label="text to click"><button class="btn" style="flex:none" onclick="cmd('acc_click_text',{text:val('ctext')})">Click text</button></div>
+        <div class="row miniform"><input id="cdesc" placeholder="content-description" aria-label="content description"><button class="btn" style="flex:none" onclick="cmd('acc_click_desc',{desc:val('cdesc')})">Click desc</button></div>
+        <div class="row miniform"><input id="cid" placeholder="pkg:id/view_id" aria-label="view id"><button class="btn" style="flex:none" onclick="cmd('acc_click_id',{id:val('cid')})">Click id</button></div>
+        <div class="row miniform"><input id="stext" placeholder="type into focused field" aria-label="text to type"><button class="btn" style="flex:none" onclick="cmd('acc_set_text',{text:val('stext')})">Set text</button></div>
+      </div>
+
+      <div class="card">
+        <h3>App control (UI)</h3>
+        <div class="row miniform">
+          <input id="fpkg" placeholder="com.example.app" aria-label="package">
+        </div>
+        <div class="row">
+          <button class="btn danger" onclick="cmd('acc_force_stop',{package:val('fpkg')})">Force stop</button>
+          <button class="btn" onclick="cmd('acc_open_app_settings',{package:val('fpkg')})">App info</button>
+        </div>
+      </div>
+
+      <div class="card" style="grid-column:1/-1">
+        <h3>Screen <span class="hint" id="curapp">foreground: —</span></h3>
+        <div class="row">
+          <button class="btn" style="flex:none" onclick="readScreen()">Read screen</button>
+          <button class="btn" style="flex:none" onclick="curApp()">Current app</button>
+          <button class="btn" style="flex:none" onclick="readNotifs()">Notifications</button>
+        </div>
+        <pre id="screendump" style="margin:12px 0 0;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:10px;font-family:var(--mono);font-size:11px;color:var(--dim);max-height:280px;overflow:auto;white-space:pre-wrap;word-break:break-word"></pre>
+      </div>
+    </div>
+  </section>
 </main>
 
 <div class="logbar">
@@ -276,6 +343,7 @@
       <kbd>/</kbd><span>Search apps</span>
       <kbd>1</kbd><span>Controls tab</span>
       <kbd>2</kbd><span>Apps tab</span>
+      <kbd>3</kbd><span>System tab</span>
       <kbd>p</kbd><span>Play / pause</span>
       <kbd>[ &nbsp; ]</kbd><span>Previous / next track</span>
       <kbd>↑ &nbsp; ↓</kbd><span>Volume up / down</span>
@@ -340,6 +408,26 @@ function cmd(action,args={},cb){
   log("→ "+action+(args.package?" "+args.package:"")+(args.level!==undefined?" "+args.level:""),"s");
 }
 
+function num(id){const v=parseInt($(id).value,10);return isNaN(v)?0:v;}
+
+/* navigation buttons (accessibility global actions) */
+const NAV=[
+  ["Back","acc_back"],["Home","acc_home"],["Recents","acc_recents"],["Lock","acc_lock"],
+  ["Notifications","acc_notifications"],["Quick settings","acc_quick_settings"],["Dismiss shade","acc_dismiss_shade"],
+  ["Power dialog","acc_power_dialog"],["Screenshot","acc_screenshot"],["Split screen","acc_split_screen"],
+  ["All apps","acc_all_apps"],["Menu","acc_menu"],["Play/Pause","acc_media_play_pause"],
+  ["D-pad ↑","acc_dpad_up"],["D-pad ↓","acc_dpad_down"],["D-pad ←","acc_dpad_left"],["D-pad →","acc_dpad_right"],["D-pad ⏺","acc_dpad_center"],
+];
+function buildNav(){const g=$("navgrid");if(!g||g.childElementCount)return;NAV.forEach(([label,action])=>{const b=document.createElement("button");b.className="btn";b.style.flex="0 0 auto";b.textContent=label;b.onclick=()=>cmd(action);g.appendChild(b);});}
+
+function readScreen(){cmd("acc_read_screen",{},m=>{$("screendump").textContent=m.ok===false?("error: "+(m.error||"failed")):(m.screen||"(empty screen tree)");});}
+function curApp(){cmd("acc_current_app",{},m=>{const a=m.app||"?";$("curapp").textContent="foreground: "+a;$("screendump").textContent="foreground app: "+a;});}
+function readNotifs(){cmd("acc_notifications",{},m=>{
+  if(m.ok===false){$("screendump").textContent="error: "+(m.error||"failed");return;}
+  const arr=m.notifications||[];
+  $("screendump").textContent=arr.length? arr.slice().reverse().map(n=>"["+n.package+"] "+n.text).join("\n") : "(no notifications captured yet)";
+});}
+
 function volLbl(v){$("volv").textContent=v+"%";$("vol").setAttribute("aria-valuetext",v+" percent");}
 function ringer(action,btn){ [...$("ringer").children].forEach(b=>b.setAttribute("aria-pressed","false")); btn.setAttribute("aria-pressed","true"); cmd(action); }
 function openUrl(){ const u=val("url").trim(); if(u)cmd("open_url",{url:u}); }
@@ -388,6 +476,7 @@ function tab(v){
   document.querySelectorAll(".tab").forEach(t=>t.setAttribute("aria-selected",t.dataset.v===v?"true":"false"));
   document.querySelectorAll(".view").forEach(s=>{const on=s.id==="v-"+v;s.classList.toggle("active",on);s.hidden=!on;});
   if(v==="apps")renderApps();
+  if(v==="system")buildNav();
 }
 
 function log(t,c=""){const el=$("log");const r=document.createElement("div");r.className="l";
@@ -418,6 +507,7 @@ document.addEventListener("keydown",e=>{
   switch(e.key){
     case"1":tab("controls");break;
     case"2":tab("apps");break;
+    case"3":tab("system");break;
     case"?":e.preventDefault();openHelp();break;
     case"t":toggleTheme();break;
     case"l":toggleLog();break;

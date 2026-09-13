@@ -7,3 +7,6 @@ android-agent/local.properties
 .idea/
 *.iml
 tools/
+.relay-token
+apk-output/
+*.zip

@@ -1,0 +1,3 @@
+<resources>
+    <string name="acc_desc">Lets Remote Agent perform navigation, gestures, taps, text input, read on-screen content, and detect the foreground app so it can be controlled remotely from your own dashboard.</string>
+</resources>
