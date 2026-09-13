@@ -319,11 +319,24 @@
         <div class="row">
           <button class="btn" style="flex:none" id="liveBtn" onclick="toggleLive()">Start live view</button>
           <button class="btn" style="flex:none" onclick="tickLive()">Refresh once</button>
+          <span style="display:inline-flex;align-items:center;gap:7px"><button class="sw" role="switch" aria-checked="false" id="hdSw" aria-label="HD live view" onclick="toggleHd()"></button><span style="font-size:12px;color:var(--dim)">HD</span></span>
+          <span class="slider" style="flex:1;min-width:150px"><input type="range" id="fps" min="1" max="15" value="4" aria-label="frames per second" oninput="fpsLbl(this.value)"><span class="vval" id="fpsv">4 fps</span></span>
+        </div>
+        <div class="row">
+          <span style="display:inline-flex;align-items:center;gap:7px"><button class="sw" role="switch" aria-checked="false" id="kbSw" aria-label="Keyboard capture to phone" onclick="toggleKb()"></button><span style="font-size:12px;color:var(--dim)">Keyboard capture</span></span>
+          <span class="chip" id="kbbuf" style="display:none"></span>
+          <button class="btn" style="flex:none" id="kbClear" onclick="kbClearBuf()" hidden>Clear buffer</button>
+        </div>
+        <div class="row miniform">
+          <input id="typetext" placeholder="type text → sets focused field on phone" aria-label="type text to phone" onkeydown="if(event.key==='Enter'){cmd('acc_set_text',{text:this.value});}">
+          <button class="btn" style="flex:none" onclick="cmd('acc_set_text',{text:val('typetext')})">Send</button>
+          <button class="btn" style="flex:none" onclick="cmd('acc_ime_enter')">Enter</button>
+          <button class="btn" style="flex:none" onclick="cmd('acc_focus_next')">Tab</button>
         </div>
         <div style="margin-top:12px;text-align:center">
-          <img id="live" alt="device screen" style="max-width:100%;max-height:62vh;border:1px solid var(--line);border-radius:8px;cursor:crosshair;display:none">
+          <img id="live" tabindex="0" alt="device screen" style="max-width:100%;max-height:62vh;border:1px solid var(--line);border-radius:8px;cursor:crosshair;display:none">
         </div>
-        <div class="readout" style="margin-top:8px"><span class="k">tip: click on the image to tap that exact point on the phone</span></div>
+        <div class="readout" style="margin-top:8px"><span class="k">click image = tap · HD needs a one-time Allow on the phone &amp; shows a cast indicator · keyboard capture &amp; “type text” replace the focused field’s contents</span></div>
       </div>
 
       <div class="card" style="grid-column:1/-1">
@@ -528,21 +541,54 @@ const NAV=[
 ];
 function buildNav(){const g=$("navgrid");if(!g||g.childElementCount)return;NAV.forEach(([label,action])=>{const b=document.createElement("button");b.className="btn";b.style.flex="0 0 auto";b.textContent=label;b.onclick=()=>cmd(action);g.appendChild(b);});}
 
-/* live view (silent ~1fps screenshot stream) */
-let liveTimer=null,liveBusy=false;
+/* live view — silent ~1fps (acc_capture) or HD (MediaProjection mp_frame) */
+let liveTimer=null,liveBusy=false,hd=false,fps=4;
+function liveIv(){ return hd ? Math.max(66,Math.round(1000/fps)) : 1300; }
+function restartLoop(){ if(liveTimer){clearInterval(liveTimer);liveTimer=setInterval(tickLive,liveIv());} }
+function fpsLbl(v){ fps=+v||1; $("fpsv").textContent=fps+" fps"; if(hd)restartLoop(); }
+function toggleHd(){
+  hd=!hd; $("hdSw").setAttribute("aria-checked",hd);
+  if(hd){ cmd("mp_start",{max:720,q:45},m=>{ if(m&&!m.ok)$("livestat").textContent="HD: "+(m.error||"failed"); }); $("livestat").textContent="HD starting… tap Allow on the phone"; }
+  else { cmd("mp_stop"); $("livestat").textContent="switched to silent ~1 fps"; }
+  restartLoop();
+}
 function toggleLive(){ if(liveTimer)stopLive(); else startLive(); }
-function startLive(){ $("liveBtn").textContent="Stop live view"; $("live").style.display="inline-block"; tickLive(); liveTimer=setInterval(tickLive,1300); }
-function stopLive(){ clearInterval(liveTimer); liveTimer=null; $("liveBtn").textContent="Start live view"; $("livestat").textContent="stopped · ~1 fps · silent, no file"; }
+function startLive(){ $("liveBtn").textContent="Stop live view"; $("live").style.display="inline-block"; if(hd)cmd("mp_start",{max:720,q:45}); tickLive(); liveTimer=setInterval(tickLive,liveIv()); }
+function stopLive(){ if(liveTimer)clearInterval(liveTimer); liveTimer=null; $("liveBtn").textContent="Start live view"; if(hd)cmd("mp_stop"); $("livestat").textContent="stopped"; }
 function tickLive(){
   if(!connected||liveBusy)return; liveBusy=true;
-  cmd("acc_capture",{max:720,q:40},m=>{
+  const action=hd?"mp_frame":"acc_capture";
+  cmd(action,{max:720,q:hd?45:40},m=>{
     liveBusy=false;
     if(m&&m.ok&&m.img){
       const img=$("live"); img.src="data:image/jpeg;base64,"+m.img;
       img.dataset.fw=m.fullw||0; img.dataset.fh=m.fullh||0;
-      $("livestat").textContent="live · "+(m.fullw||"?")+"×"+(m.fullh||"?");
+      $("livestat").textContent=(hd?"HD "+fps+" fps · ":"live ~1 fps · ")+(m.fullw||"?")+"×"+(m.fullh||"?");
     } else if(m){ $("livestat").textContent="err: "+(m.error||"failed"); }
   },true);
+}
+
+/* keyboard capture — forwards real keystrokes to the phone (System tab only) */
+let kb=false,kbBuf="",kbDebounce=null;
+function toggleKb(){
+  kb=!kb; $("kbSw").setAttribute("aria-checked",kb);
+  $("kbbuf").style.display=kb?"inline-flex":"none"; $("kbClear").hidden=!kb;
+  if(kb){ kbBuf=""; updateKbBuf(); try{$("live").focus();}catch{} }
+}
+function kbClearBuf(){ kbBuf=""; updateKbBuf(); }
+function updateKbBuf(){ $("kbbuf").textContent = kbBuf ? ("⌨ "+kbBuf) : "⌨ (empty)"; }
+function kbFlush(){ if(kbDebounce)clearTimeout(kbDebounce); kbDebounce=setTimeout(()=>cmd("acc_set_text",{text:kbBuf}),150); }
+function handleKbKey(e){
+  const k=e.key;
+  if(k==="Enter"){e.preventDefault();cmd("acc_ime_enter");return;}
+  if(k==="Tab"){e.preventDefault();cmd("acc_focus_next");return;}
+  if(k==="Backspace"){e.preventDefault();kbBuf=kbBuf.slice(0,-1);updateKbBuf();kbFlush();return;}
+  if(k==="Escape"){e.preventDefault();cmd("acc_back");return;}
+  if(k==="ArrowUp"){e.preventDefault();cmd("acc_dpad_up");return;}
+  if(k==="ArrowDown"){e.preventDefault();cmd("acc_dpad_down");return;}
+  if(k==="ArrowLeft"){e.preventDefault();cmd("acc_dpad_left");return;}
+  if(k==="ArrowRight"){e.preventDefault();cmd("acc_dpad_right");return;}
+  if(k.length===1&&!e.ctrlKey&&!e.metaKey&&!e.altKey){ e.preventDefault(); kbBuf+=k; updateKbBuf(); kbFlush(); }
 }
 
 function readScreen(){cmd("acc_read_screen",{},m=>{$("screendump").textContent=m.ok===false?("error: "+(m.error||"failed")):(m.screen||"(empty screen tree)");});}
@@ -643,6 +689,8 @@ function closeHelp(){$("help").classList.remove("open");if(lastFocus)lastFocus.f
 function typing(){const e=document.activeElement;return e&&(e.tagName==="INPUT"||e.tagName==="TEXTAREA"||e.isContentEditable);}
 document.addEventListener("keydown",e=>{
   if($("help").classList.contains("open")){ if(e.key==="Escape")closeHelp(); return; }
+  // keyboard capture forwards keystrokes to the phone and suspends global shortcuts
+  if(kb&&activeTab==="system"&&!typing()){ handleKbKey(e); return; }
   if(e.key==="/"&&!typing()){e.preventDefault();tab("apps");$("q").focus();return;}
   if(e.key==="Escape"){ if(document.activeElement===$("q")){$("q").value="";renderApps();$("q").blur();} return; }
   if(typing())return;
