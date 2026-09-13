@@ -2,12 +2,18 @@ package com.devtools.remoteagent
 
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.GestureDescription
+import android.graphics.Bitmap
 import android.graphics.Path
 import android.os.Build
+import android.util.Base64
+import android.view.Display
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
 import org.json.JSONArray
 import org.json.JSONObject
+import java.io.ByteArrayOutputStream
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 
 /**
  * Full accessibility control surface: global navigation actions, arbitrary
@@ -121,6 +127,61 @@ class AccessibilityControlService : AccessibilityService() {
     // ---- reads ----
     fun currentApp(): String = foregroundApp
     fun notifications(): JSONArray = synchronized(notifs) { JSONArray().apply { notifs.forEach { put(it) } } }
+
+    /**
+     * Silent, file-less screenshot via AccessibilityService.takeScreenshot():
+     * returns an in-memory bitmap (no gallery file, no shutter sound, no
+     * notification). Downscaled + JPEG-compressed, returned as base64.
+     */
+    fun captureResult(maxDim: Int, quality: Int): JSONObject {
+        if (Build.VERSION.SDK_INT < 30) return JSONObject().put("ok", false).put("error", "live view needs Android 11+")
+        val latch = CountDownLatch(1)
+        var out = JSONObject().put("ok", false).put("error", "timeout")
+        try {
+            takeScreenshot(Display.DEFAULT_DISPLAY, mainExecutor, object : TakeScreenshotCallback {
+                override fun onSuccess(res: ScreenshotResult) {
+                    var hw: Bitmap? = null; var soft: Bitmap? = null; var scaled: Bitmap? = null
+                    try {
+                        val hb = res.hardwareBuffer
+                        hw = Bitmap.wrapHardwareBuffer(hb, res.colorSpace)
+                        hb.close()
+                        val src = hw
+                        if (src == null) { out = JSONObject().put("ok", false).put("error", "decode failed"); return }
+                        soft = src.copy(Bitmap.Config.ARGB_8888, false)
+                        val fullW = soft!!.width; val fullH = soft!!.height
+                        scaled = downscale(soft!!, maxDim)
+                        val baos = ByteArrayOutputStream()
+                        scaled!!.compress(Bitmap.CompressFormat.JPEG, quality.coerceIn(10, 90), baos)
+                        out = JSONObject().put("ok", true)
+                            .put("img", Base64.encodeToString(baos.toByteArray(), Base64.NO_WRAP))
+                            .put("w", scaled!!.width).put("h", scaled!!.height)
+                            .put("fullw", fullW).put("fullh", fullH)
+                    } catch (e: Exception) {
+                        out = JSONObject().put("ok", false).put("error", e.message ?: "capture error")
+                    } finally {
+                        scaled?.let { if (it !== soft) it.recycle() }
+                        soft?.recycle(); hw?.recycle()
+                        latch.countDown()
+                    }
+                }
+                override fun onFailure(errorCode: Int) {
+                    out = JSONObject().put("ok", false).put("error", "screenshot rejected (code $errorCode)")
+                    latch.countDown()
+                }
+            })
+            latch.await(4, TimeUnit.SECONDS)
+        } catch (e: Exception) {
+            return JSONObject().put("ok", false).put("error", e.message ?: "capture failed")
+        }
+        return out
+    }
+
+    private fun downscale(b: Bitmap, maxDim: Int): Bitmap {
+        val m = maxOf(b.width, b.height)
+        if (m <= maxDim) return b
+        val f = maxDim.toFloat() / m
+        return Bitmap.createScaledBitmap(b, (b.width * f).toInt(), (b.height * f).toInt(), true)
+    }
 
     fun readScreen(): String {
         val root = rootInActiveWindow ?: return ""

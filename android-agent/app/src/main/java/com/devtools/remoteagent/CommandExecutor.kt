@@ -83,6 +83,7 @@ class CommandExecutor(private val ctx: Context) {
                 "acc_read_screen" -> accRead { ok { put("screen", it.readScreen()) } }
                 "acc_current_app" -> accRead { ok { put("app", it.currentApp()) } }
                 "acc_notifications" -> accRead { ok { put("notifications", it.notifications()) } }
+                "acc_capture" -> accRead { it.captureResult(args.optInt("max", 720), args.optInt("q", 40)) }
                 // ---- accessibility: combos ----
                 "acc_force_stop" -> forceStopViaUi(args.optString("package"))
                 "acc_open_app_settings" -> openAppSettings(args.optString("package"))

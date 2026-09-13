@@ -263,6 +263,18 @@
   <section class="view" id="v-system" role="tabpanel" aria-labelledby="tab-system" hidden>
     <div class="panels">
       <div class="card" style="grid-column:1/-1">
+        <h3>Live view <span class="hint" id="livestat">stopped · ~1 fps · silent, no file</span></h3>
+        <div class="row">
+          <button class="btn" style="flex:none" id="liveBtn" onclick="toggleLive()">Start live view</button>
+          <button class="btn" style="flex:none" onclick="tickLive()">Refresh once</button>
+        </div>
+        <div style="margin-top:12px;text-align:center">
+          <img id="live" alt="device screen" style="max-width:100%;max-height:62vh;border:1px solid var(--line);border-radius:8px;cursor:crosshair;display:none">
+        </div>
+        <div class="readout" style="margin-top:8px"><span class="k">tip: click on the image to tap that exact point on the phone</span></div>
+      </div>
+
+      <div class="card" style="grid-column:1/-1">
         <h3>Navigation <span class="hint">accessibility · persists reboot</span></h3>
         <div class="row" id="navgrid"></div>
       </div>
@@ -399,13 +411,13 @@ function connect(){
   ws.onclose=()=>{connected=false;setStatus("disconnected");};
   ws.onerror=()=>log("ws error","bad");
 }
-function cmd(action,args={},cb){
-  if(!connected){log("not connected — hit Connect","bad");return;}
+function cmd(action,args={},cb,quiet){
+  if(!connected){if(!quiet)log("not connected — hit Connect","bad");return;}
   const requestId=Math.random().toString(36).slice(2,10);
   if(cb)pending[requestId]=cb;
   ws.send(JSON.stringify({type:"command",deviceId:$("deviceId").value,requestId,action,args}));
-  sent++;$("counts").textContent=sent+" sent";
-  log("→ "+action+(args.package?" "+args.package:"")+(args.level!==undefined?" "+args.level:""),"s");
+  if(!quiet){sent++;$("counts").textContent=sent+" sent";
+    log("→ "+action+(args.package?" "+args.package:"")+(args.level!==undefined?" "+args.level:""),"s");}
 }
 
 function num(id){const v=parseInt($(id).value,10);return isNaN(v)?0:v;}
@@ -419,6 +431,23 @@ const NAV=[
   ["D-pad ↑","acc_dpad_up"],["D-pad ↓","acc_dpad_down"],["D-pad ←","acc_dpad_left"],["D-pad →","acc_dpad_right"],["D-pad ⏺","acc_dpad_center"],
 ];
 function buildNav(){const g=$("navgrid");if(!g||g.childElementCount)return;NAV.forEach(([label,action])=>{const b=document.createElement("button");b.className="btn";b.style.flex="0 0 auto";b.textContent=label;b.onclick=()=>cmd(action);g.appendChild(b);});}
+
+/* live view (silent ~1fps screenshot stream) */
+let liveTimer=null,liveBusy=false;
+function toggleLive(){ if(liveTimer)stopLive(); else startLive(); }
+function startLive(){ $("liveBtn").textContent="Stop live view"; $("live").style.display="inline-block"; tickLive(); liveTimer=setInterval(tickLive,1300); }
+function stopLive(){ clearInterval(liveTimer); liveTimer=null; $("liveBtn").textContent="Start live view"; $("livestat").textContent="stopped · ~1 fps · silent, no file"; }
+function tickLive(){
+  if(!connected||liveBusy)return; liveBusy=true;
+  cmd("acc_capture",{max:720,q:40},m=>{
+    liveBusy=false;
+    if(m&&m.ok&&m.img){
+      const img=$("live"); img.src="data:image/jpeg;base64,"+m.img;
+      img.dataset.fw=m.fullw||0; img.dataset.fh=m.fullh||0;
+      $("livestat").textContent="live · "+(m.fullw||"?")+"×"+(m.fullh||"?");
+    } else if(m){ $("livestat").textContent="err: "+(m.error||"failed"); }
+  },true);
+}
 
 function readScreen(){cmd("acc_read_screen",{},m=>{$("screendump").textContent=m.ok===false?("error: "+(m.error||"failed")):(m.screen||"(empty screen tree)");});}
 function curApp(){cmd("acc_current_app",{},m=>{const a=m.app||"?";$("curapp").textContent="foreground: "+a;$("screendump").textContent="foreground app: "+a;});}
@@ -476,7 +505,20 @@ function tab(v){
   document.querySelectorAll(".tab").forEach(t=>t.setAttribute("aria-selected",t.dataset.v===v?"true":"false"));
   document.querySelectorAll(".view").forEach(s=>{const on=s.id==="v-"+v;s.classList.toggle("active",on);s.hidden=!on;});
   if(v==="apps")renderApps();
-  if(v==="system")buildNav();
+  if(v==="system"){buildNav();wireLiveClick();}
+  else if(liveTimer)stopLive();
+}
+let liveWired=false;
+function wireLiveClick(){
+  if(liveWired)return; liveWired=true;
+  $("live").addEventListener("click",e=>{
+    const img=$("live"); const r=img.getBoundingClientRect();
+    const fw=+img.dataset.fw||0, fh=+img.dataset.fh||0;
+    if(!fw||!fh)return;
+    const x=Math.round((e.clientX-r.left)/r.width*fw);
+    const y=Math.round((e.clientY-r.top)/r.height*fh);
+    cmd("acc_tap",{x,y});
+  });
 }
 
 function log(t,c=""){const el=$("log");const r=document.createElement("div");r.className="l";
