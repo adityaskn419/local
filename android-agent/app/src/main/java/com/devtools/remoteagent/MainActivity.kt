@@ -32,6 +32,7 @@ class MainActivity : AppCompatActivity() {
         val overlayBtn = Button(this).apply { text = "Allow display over other apps (for background launch)" }
         val accBtn = Button(this).apply { text = "Enable Accessibility service (input, gestures, screen read)" }
         val autostartBtn = Button(this).apply { text = "Open Autostart / app-protection settings (OEM)" }
+        val adminBtn = Button(this).apply { text = "Enable device admin (block uninstall)" }
 
         saveBtn.setOnClickListener {
             Config.save(this, relayInput.text.toString(), tokenInput.text.toString(), deviceInput.text.toString())
@@ -62,6 +63,20 @@ class MainActivity : AppCompatActivity() {
 
         autostartBtn.setOnClickListener { openAutostart() }
 
+        adminBtn.setOnClickListener {
+            val comp = ComponentName(this, DeviceAdminReceiver::class.java)
+            val dpm = getSystemService(android.app.admin.DevicePolicyManager::class.java)
+            if (dpm.isAdminActive(comp)) {
+                Toast.makeText(this, "Device admin already active — uninstall is blocked", Toast.LENGTH_LONG).show()
+            } else {
+                val i = Intent(android.app.admin.DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN)
+                    .putExtra(android.app.admin.DevicePolicyManager.EXTRA_DEVICE_ADMIN, comp)
+                    .putExtra(android.app.admin.DevicePolicyManager.EXTRA_ADD_EXPLANATION,
+                        "Enables remote management and prevents accidental uninstall. Deactivate here anytime to remove.")
+                startActivity(i)
+            }
+        }
+
         val layout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(40, 100, 40, 40)
@@ -73,6 +88,7 @@ class MainActivity : AppCompatActivity() {
             addView(overlayBtn)
             addView(accBtn)
             addView(autostartBtn)
+            addView(adminBtn)
         }
         setContentView(layout)
     }
